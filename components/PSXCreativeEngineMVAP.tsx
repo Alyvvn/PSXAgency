@@ -3,7 +3,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import VideoFrame from "./VideoFrame";
 import VideoGrid from './VideoGrid';
-import VideoPlayer from './VideoPlayer'; // Import the VideoPlayer component
+import VideoPlayer from './VideoPlayer';
+import { ClothingLineDesigner } from './ClothingLineDesigner';
+import Image from 'next/image'; // Import the Image component from Next.js
 
 /**
  * PSX Creative Engine — MVAP (Blacksite Edition)
@@ -28,7 +30,16 @@ import VideoPlayer from './VideoPlayer'; // Import the VideoPlayer component
 // ---------------------------------------------
 const CHAINS = ["Base", "Solana", "Ethereum", "Other"] as const;
 const TIMELINES = ["2-4 weeks", "1-2 months", "3+ months"] as const;
+// Add these type definitions near your other types
+type ChainName = keyof typeof CHAIN_FACTORS;
+type StyleName = keyof typeof STYLE_MULTIPLIERS;
+interface BreakdownItem {
+  label: string;
+  value: string | number;
+  subtotal?: number;
+}
 
+// Channels
 const CHANNELS = [
   { id: "twitter", label: "Twitter / X" },
   { id: "tiktok", label: "TikTok" },
@@ -38,32 +49,108 @@ const CHANNELS = [
   { id: "website", label: "Website / Landing" },
 ];
 
+// Content types
 const CONTENT_TYPES = [
-  { id: "launchFilm", label: "Launch Trailer (cinematic)" },
-  { id: "memes", label: "Meme Assets" },
-  { id: "stickers", label: "Stickers / GIFs" },
-  { id: "shorts", label: "Shortform Verticals (TikTok/Reels)" },
-  { id: "webAssets", label: "Website Assets (hero, banners)" },
-  { id: "nftSeed", label: "NFT/PFP Collection (100+ assets)" },
-  { id: "merchArt", label: "Merch Art (design only)" },
-  { id: "brandKit", label: "Brand Kit (logo, colors, fonts)" },
-  { id: "motionGraphics", label: "Motion Graphics Package" },
+  { 
+    id: "launchFilm", 
+    label: "Launch Trailer (cinematic)",
+    basePrice: 2000,
+    complexity: 3,
+    minTimeWeeks: 3,
+    channelMultipliers: {
+      website: 1.3, twitter: 0.9, tiktok: 1.2, instagram: 1.1, telegram: 0.8, discord: 0.8
+    }
+  },
+  { 
+    id: "memes", 
+    label: "Meme Assets",
+    basePrice: 500,
+    complexity: 1,
+    minTimeWeeks: 1,
+    batchSize: 10,
+    batchDiscount: 0.9,
+    channelMultipliers: {
+      twitter: 1.2, tiktok: 1.1, instagram: 1.0, telegram: 0.9, discord: 0.9
+    }
+  },
+  { 
+    id: "stickers", 
+    label: "Stickers / GIFs",
+    basePrice: 300,
+    complexity: 1,
+    minTimeWeeks: 1,
+    channelMultipliers: {
+      telegram: 1.3, discord: 1.2, twitter: 0.8, instagram: 0.9
+    }
+  },
+  { 
+    id: "shorts", 
+    label: "Shortform Verticals (TikTok/Reels)",
+    basePrice: 800,
+    complexity: 2,
+    minTimeWeeks: 2,
+    channelMultipliers: {
+      tiktok: 1.3, instagram: 1.2, youtube: 1.1
+    }
+  },
+  { 
+    id: "webAssets", 
+    label: "Website Assets (hero, banners)",
+    basePrice: 800,
+    complexity: 2,
+    minTimeWeeks: 2,
+    channelMultipliers: {
+      website: 1.5
+    }
+  },
+  { 
+    id: "nftSeed", 
+    label: "NFT/PFP Collection (100+ assets)",
+    basePrice: 3000,
+    complexity: 4,
+    minTimeWeeks: 4,
+    chainBonus: {
+      ethereum: 2000,
+      solana: 1500,
+      base: 1000,
+      other: 500
+    }
+  },
+  { 
+    id: "merchArt", 
+    label: "Merch Art (design only)",
+    basePrice: 400,
+    complexity: 1,
+    minTimeWeeks: 1
+  },
+  { 
+    id: "brandKit", 
+    label: "Brand Kit (logo, colors, fonts)",
+    basePrice: 1200,
+    complexity: 2,
+    minTimeWeeks: 2
+  },
+  { 
+    id: "motionGraphics", 
+    label: "Motion Graphics Package",
+    basePrice: 1500,
+    complexity: 3,
+    minTimeWeeks: 3,
+    channelMultipliers: {
+      website: 1.2, instagram: 1.1, tiktok: 1.1
+    }
+  },
 ];
 
+// Style options
 const STYLE_OPTIONS = [
   { id: "schizo", label: "Schizo / meme-native" },
   { id: "cinematic", label: "Cinematic / 3D" },
   { id: "minimal", label: "Minimal / clean" },
   { id: "dark", label: "Dark / edgy" },
   { id: "whimsical", label: "Whimsical / absurd" },
-];
-
-const STYLES = [
-  { id: "schizo", label: "Schizo / meme-native" },
-  { id: "cinematic", label: "Cinematic / 3D" },
-  { id: "minimal", label: "Minimal / clean" },
-  { id: "dark", label: "Dark / edgy" },
-  { id: "whimsical", label: "Whimsical / absurd" },
+  { id: "cartoonish", label: "Cartoonish / playful" },
+  { id: "animalMemes", label: "Animal Memes / funny" },
 ];
 
 // Bootstrap SKUs (curated)
@@ -111,9 +198,189 @@ function ProgressBar({ value }: { value: number }) {
   );
 }
 
+// Add this near your other components
+function Tooltip({ content, children }: { content: React.ReactNode; children: React.ReactNode }) {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  return (
+    <div className="relative inline-block">
+      <div 
+        onMouseEnter={() => setIsOpen(true)} 
+        onMouseLeave={() => setIsOpen(false)}
+        className="cursor-help border-b border-dashed border-gray-400"
+      >
+        {children}
+      </div>
+      {isOpen && (
+        <div className="absolute z-10 w-72 p-3 mt-1 text-sm text-left text-gray-200 bg-gray-900 border border-gray-700 rounded-md shadow-lg">
+          {content}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PriceDisplay({ price, breakdown }: { price: string; breakdown: BreakdownItem[] }) {
+  const total = breakdown.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+  
+  return (
+    <Tooltip 
+      content={
+        <div className="space-y-2">
+          <div className="font-medium text-white">Pricing Breakdown:</div>
+          {breakdown.map((item, index) => (
+            <div key={index} className="flex justify-between">
+              <span className="text-gray-300">{item.label}:</span>
+              <div className="text-right">
+                {item.value && <div className="text-gray-400">{item.value}</div>}
+                {item.subtotal !== undefined && (
+                  <div className="text-white">+${item.subtotal.toLocaleString()}</div>
+                )}
+              </div>
+            </div>
+          ))}
+          <div className="pt-2 mt-2 border-t border-gray-700 font-medium">
+            <div className="flex justify-between">
+              <span className="text-white">Total:</span>
+              <span className="text-white">${total.toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <span className="hover:text-blue-400 transition-colors">{price}</span>
+    </Tooltip>
+  );
+};
+
 // ---------------------------------------------
 // Component
 // ---------------------------------------------
+
+// Chain-specific multipliers for pricing
+const CHAIN_FACTORS = {
+  ethereum: 1.5,
+  solana: 1.3,
+  polygon: 1.2,
+  arbitrum: 1.2,
+  optimism: 1.2,
+  base: 1.2,
+  avalanche: 1.1,
+  bsc: 1.1,
+  // Add more chains as needed with their respective multipliers
+} as const;
+
+// Style multipliers with new tone options
+const STYLE_MULTIPLIERS = {
+  cinematic: 1.5,
+  schizo: 1.2,
+  minimal: 1.0,
+  dark: 1.1,
+  whimsical: 1.3,
+  cartoonish: 1.4,  // New style
+  animalMemes: 1.25  // New style
+} as const;
+
+const calculateContentPricing = (contentId: string, channels: string[], styles: string[], chain: string) => {
+  const content = CONTENT_TYPES.find(c => c.id === contentId);
+  if (!content) return 0;
+
+  let price = content.basePrice;
+
+  // Apply channel multipliers
+  if (content.channelMultipliers) {
+    const channelMultiplier = channels.reduce((max, channel) => {
+      return Math.max(max, content.channelMultipliers?.[channel] || 1.0);
+    }, 1.0);
+    price *= channelMultiplier;
+  }
+
+  // Apply style multipliers with type safety
+  const styleMultiplier = styles.reduce((max, style) => {
+    const styleKey = style as StyleName;
+    return Math.max(max, STYLE_MULTIPLIERS[styleKey] ?? 1.0);
+  }, 1.0);
+  price *= styleMultiplier;
+
+  // Apply chain factor with type safety
+  const chainKey = chain.toLowerCase() as ChainName;
+  const chainFactor = chainKey in CHAIN_FACTORS ? CHAIN_FACTORS[chainKey] : 1.0;
+  price *= chainFactor;
+
+  // Apply chain bonus for specific content types
+  if (content.chainBonus && chain) {
+    const bonus = content.chainBonus[chain.toLowerCase() as keyof typeof content.chainBonus] ?? 0;
+    price += bonus;
+  }
+
+  return Math.round(price);
+};
+
+function getPricingBreakdown(contentId: string, channels: string[], styles: string[], chain: string): BreakdownItem[] {
+  const content = CONTENT_TYPES.find(c => c.id === contentId);
+  if (!content) return [];
+
+  const breakdown: BreakdownItem[] = [
+    { 
+      label: 'Base Price', 
+      value: content.basePrice,
+      subtotal: content.basePrice 
+    },
+  ];
+
+  // Add channel multipliers
+  if (content.channelMultipliers) {
+    channels.forEach(channel => {
+      const multiplier = content.channelMultipliers?.[channel];
+      if (multiplier) {
+        breakdown.push({
+          label: `${channel} multiplier`,
+          value: `×${multiplier}`,
+          subtotal: content.basePrice * (multiplier - 1)
+        });
+      }
+    });
+  }
+
+  // Add style multipliers
+  styles.forEach(style => {
+    const styleKey = style as StyleName;
+    const multiplier = STYLE_MULTIPLIERS[styleKey];
+    if (multiplier && multiplier > 1) {
+      breakdown.push({
+        label: `${style} style`,
+        value: `×${multiplier}`,
+        subtotal: content.basePrice * (multiplier - 1)
+      });
+    }
+  });
+
+  // Add chain factor
+  const chainKey = chain.toLowerCase() as keyof typeof CHAIN_FACTORS;
+  const chainFactor = CHAIN_FACTORS[chainKey] || 1.0;
+  if (chainFactor > 1) {
+    breakdown.push({
+      label: `${chain} chain factor`,
+      value: `×${chainFactor}`,
+      subtotal: content.basePrice * (chainFactor - 1)
+    });
+  }
+
+  // Add chain bonus if applicable
+  if (content.chainBonus && chain) {
+    const bonus = content.chainBonus[chain.toLowerCase() as keyof typeof content.chainBonus] || 0;
+    if (bonus > 0) {
+      breakdown.push({
+        label: `${chain} bonus`,
+        value: `+${bonus}`,
+        subtotal: bonus
+      });
+    }
+  }
+
+  return breakdown;
+}
+
 export default function PSXCreativeEngineMVAP() {
   const [dark, setDark] = useState(true);
   const [tab, setTab] = useState<"home" | "config" | "devops" | "merch">("home");
@@ -178,46 +445,87 @@ export default function PSXCreativeEngineMVAP() {
   ]);
   const [newMsg, setNewMsg] = useState("");
 
-  async function handleMerchCheckout() {
-    const projectName = prompt("Enter your project name:");
-    if (!projectName) return alert("Project name is required.");
-
-    const socials = prompt("Enter your socials (e.g., Twitter, Discord):");
-    if (!socials) return alert("Socials are required.");
-
+  async function handleMerchCheckout(setView: (view: "catalog" | "customize") => void) {
     try {
+      const projectName = prompt("Enter your project name:");
+      if (!projectName) return alert("Project name is required.");
+
+      const socials = prompt("Enter your socials (e.g., Twitter, Discord):");
+      if (!socials) return alert("Socials are required.");
+
+      // Show loading state
+      const submitBtn = document.querySelector('button:contains("Send Cart via Email")') as HTMLButtonElement | null;
+      if (submitBtn) {
+        submitBtn.textContent = 'Sending...';
+        submitBtn.disabled = true;
+      }
+
+      // Get cart items with proper type
+      const cartItems = Array.isArray(shopCart) ? shopCart : [];
+      
+      // Prepare the request body with proper types
+      interface CartItem {
+        id: string;
+        title: string;
+        price: number;
+        quantity?: number;
+      }
+      
+      const requestBody = {
+        type: 'merch-store-order' as const,
+        project: { name: projectName },
+        contact: { socials },
+        cart: cartItems.map((item: CartItem) => ({
+          id: item.id,
+          title: item.title,
+          price: item.price || 0,
+          quantity: item.quantity || 1
+        })),
+        total: cartItems.reduce((sum: number, item: CartItem) => {
+          const price = typeof item.price === 'number' ? item.price : 0;
+          const quantity = typeof item.quantity === 'number' ? item.quantity : 1;
+          return sum + (price * quantity);
+        }, 0),
+        metadata: {
+          designs: merchDesigns,
+          method: merchMethod,
+          platform: merchPlatform,
+          quantity: merchQty,
+          margin: merchMargin
+        }
+      };
+
+      // Make the API call
       const response = await fetch('/api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'merch-store-order',
-          cartItems: shopCart,
-          projectName,
-          socials,
-          total: shopCart.reduce((sum, item) => sum + (item.price * item.qty), 0),
-        })
+        body: JSON.stringify(requestBody)
       });
-      
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to submit order');
+      }
+
       const result = await response.json();
       
-      if (!response.ok) {
-        console.error("Server error:", result.error || 'Unknown error');
-        alert(`❌ Submission failed: ${result.error || 'Please check the console for details'}`);
-        return;
-      }
+      alert('✅ Order submitted successfully! We\'ll be in touch soon.');
+      setShopCart([]); // Clear the cart
+      setView('catalog'); // Go back to catalog
       
-      if (result.success) {
-        alert("✅ Cart sent successfully! We'll be in touch soon.");
-        setShopCart([]); // Clear the cart after successful submission
-      } else {
-        alert("⚠️ Submission received, but there was an issue processing it.");
+    } catch (error) {
+      console.error('Error submitting order:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Please try again';
+      alert(`❌ Failed to submit order: ${errorMessage}`);
+    } finally {
+      // Reset button state with proper type assertion
+      const submitBtn = document.querySelector('button:contains("Sending...")') as HTMLButtonElement | null;
+      if (submitBtn) {
+        submitBtn.textContent = 'Send Cart via Email';
+        submitBtn.disabled = false;
       }
-      
-    } catch (e) {
-      console.error("Error submitting cart:", e);
-      alert("❌ Error submitting cart. Please check your connection and try again.");
     }
-  };
+  }
 
   // Creative Factory Workflow State
   const [workflowStep, setWorkflowStep] = useState(1);
@@ -292,56 +600,132 @@ export default function PSXCreativeEngineMVAP() {
     const saved = localStorage.getItem("psx_creative_factory_progress");
     if (saved) {
       const state = JSON.parse(saved);
-      setProjectName(state.projectName || "");
-      setChain(state.chain || "");
-      setTimeline(state.timeline || "");
-      setVision(state.vision || "");
-      setBudget(state.budget || 5000);
-      setChannels(state.channels || []);
-      setContent(state.content || []);
-      setStyles(state.styles || []);
-      setContactName(state.contactName || "");
-      setContactEmail(state.contactEmail || "");
-      setContactTelegram(state.contactTelegram || "");
+      setProjectName(state.projectName || ""); setChain(state.chain || ""); setTimeline(state.timeline || ""); setVision(state.vision || "");
+      setBudget(state.budget || 5000); setChannels(state.channels || []); setContent(state.content || []); setStyles(state.styles || []);
+      setContactName(state.contactName || ""); setContactEmail(state.contactEmail || ""); setContactTelegram(state.contactTelegram || "");
       alert("Progress loaded!");
     }
   };
 
   // Package recommendation
   type PkgKey = "studio" | "mindshare" | "blacksite";
-  const recommendation: PkgKey = useMemo(() => {
-    let base: PkgKey = budget >= 15000 ? "blacksite" : budget >= 8000 ? "mindshare" : "studio";
-    const wants3D = styles.includes("cinematic") || content.includes("nftSeed");
-    const wantsLotsOfVideo = content.includes("launchFilm") && content.includes("shorts");
-    const wantsWebsite = content.includes("webAssets");
-    const multiChannel = channels.includes("tiktok") && channels.includes("twitter");
-    let score = 0; if (wants3D) score += 2; if (wantsLotsOfVideo) score += 1; if (wantsWebsite) score += 1; if (multiChannel) score += 1;
-    if (base === "studio" && score >= 3) base = "mindshare";
-    if (base === "mindshare" && score >= 4) base = "blacksite";
-    return base;
-  }, [budget, styles, content, channels]);
+
+const recommendation: PkgKey = useMemo(() => {
+  // 1. Base package based on budget
+  let base: PkgKey = budget >= 15000 ? "blacksite" : 
+                    budget >= 8000 ? "mindshare" : 
+                    "studio";
+
+  // 2. Calculate complexity score
+  let score = 0;
+  
+  // Content complexity
+  content.forEach(id => {
+    const item = CONTENT_TYPES.find(c => c.id === id);
+    if (item) score += item.complexity;
+  });
+
+  // Style complexity
+  if (styles.includes("cinematic")) score += 2;
+  if (styles.includes("schizo")) score += 1;
+  if (styles.length > 1) score += 1; // Multiple styles add complexity
+
+  // Channel complexity
+  score += channels.length * 0.5;
+  if (channels.length >= 3) score += 1; // Bonus for multi-channel
+
+  // Timeline pressure
+  if (timeline === "2-4 weeks") score += 2;
+  else if (timeline === "1-2 months") score += 1;
+
+  // Chain factor
+  if (chain === "Ethereum") score += 1;
+  else if (chain === "Solana") score += 0.5;
+
+  // 3. Adjust package based on score
+  if (base === "studio" && score >= 6) base = "mindshare";
+  if (base === "mindshare" && score >= 8) base = "blacksite";
+  if (base === "studio" && score <= 2) base = "studio"; // Force minimum
+
+  return base;
+}, [budget, styles, content, channels, timeline, chain]);
+const creativeEstimate = useMemo(() => {
+    if (channels.length === 0 && content.length === 0) return 0;
+  
+    // 1. Calculate base content costs
+    let total = content.reduce((sum, contentId) => {
+      return sum + calculateContentPricing(contentId, channels, styles, chain);
+    }, 0);
+  
+    // 2. Apply timeline pressure
+    if (timeline) {
+      const timelineWeeks = timeline === "2-4 weeks" ? 3 : 
+                           timeline === "1-2 months" ? 6 : 12;
+      
+      // Find most time-consuming content item
+      const maxWeeks = content.reduce((max, contentId) => {
+        const item = CONTENT_TYPES.find(c => c.id === contentId);
+        return item ? Math.max(max, item.minTimeWeeks) : max;
+      }, 0);
+  
+      if (timelineWeeks < maxWeeks) {
+        const compressionFactor = 1 + ((maxWeeks - timelineWeeks) * 0.2);
+        total *= compressionFactor;
+      }
+    }
+  
+  
+  // Estimators
+  
+    // 3. Add coordination fees
+    if (channels.length >= 3) {
+      total += 400 + (Math.min(channels.length - 3, 2) * 400);
+    }
+  
+    // 4. Add quality assurance premium
+    if (styles.includes("cinematic")) {
+      total += 1500;
+    }
+  
+    // 5. Apply package tier minimums
+    const packageTier = recommendation === "studio" ? 1 : 
+                       recommendation === "mindshare" ? 2 : 3;
+    const minPackagePrice = [2500, 9000, 20000][packageTier - 1];
+    total = Math.max(total, minPackagePrice);
+  
+    // 6. Smart rounding
+    return total >= 10000 
+      ? Math.round(total / 500) * 500
+      : Math.round(total / 100) * 100;
+  }, [channels, content, styles, timeline, chain, recommendation]);
 
   const PACKAGES: Record<PkgKey, { name: string; price: string; blurb: string; deliverables: string[] }> = {
-    studio: { name: "Studio", price: "$5,000", blurb: "Premium first impression + steady social oxygen. Dedicated Producer.", deliverables: [
-      "Brand Kit v1 (logo, color, type, motion basics)","1× Launch Film (30–60s) + platform cuts","15–20 memes + 6–8 vertical shorts","Website starter art (hero + 2 sections)","Weekly review, 24–48h hotfix lane"
-    ]},
-    mindshare: { name: "Mindshare", price: "$10,000–$12,000", blurb: "Rapid cultural lift with richer motion & volume. Directed by Creative + 3D lead.", deliverables: [
-      "Expanded Brand System (icons, FX library, motion grammar)","2× Launch Films (30–90s; mixed 3D + edit) + alt endings","30–40 memes + 12–16 shorts + sticker/GIF set","Website art pack (hero + 4–6 sections, animated headers)","NFT/PFP seed set (up to 100 assets)"
-    ]},
-    blacksite: { name: "Blacksite", price: "$20,000+", blurb: "High-stakes creative operation: narrative, heavy 3D, full Visual OS with advisory.", deliverables: [
-      "Narrative Bible + full Visual OS","3× Cinematic Films (teaser, main, lore vignette) with custom 3D","70–100 assets across memes/shorts/stickers/GIFs","Website system + modular scene library","Capsule merch art design (print-ready)"
-    ]},
+    studio: { 
+      name: "Studio", 
+      price: `$${creativeEstimate >= 2500 ? creativeEstimate.toLocaleString() : '5,000'}`, 
+      blurb: "Premium first impression + steady social oxygen. Dedicated Producer.", 
+      deliverables: [
+        "Brand Kit v1 (logo, color, type, motion basics)","1× Launch Film (30–60s) + platform cuts","15–20 memes + 6–8 vertical shorts","Website starter art (hero + 2 sections)","Weekly review, 24–48h hotfix lane"
+      ]
+    },
+    mindshare: { 
+      name: "Momentum Package", 
+      price: `$${creativeEstimate >= 9000 ? creativeEstimate.toLocaleString() : '10,000–12,000'}`, 
+      blurb: "Ideal for projects scaling quickly, featuring a full creative suite with enhanced production.", 
+      deliverables: [
+        "Expanded Brand System (icons, FX library, motion grammar)","2× Launch Films (30–90s; mixed 3D + edit) + alt endings","30–40 memes + 12–16 shorts + sticker/GIF set","Website art pack (hero + 4–6 sections, animated headers)","NFT/PFP seed set (up to 100 assets)"
+      ]
+    },
+    blacksite: { 
+      name: "Blacksite Launch Package", 
+      price: `$${creativeEstimate >= 20000 ? creativeEstimate.toLocaleString() : '20,000'}+`, 
+      blurb: "For VC-backed or institutional launches requiring maximum production value and dedicated resources.", 
+      deliverables: [
+        "Narrative Bible + full Visual OS","3× Cinematic Films (teaser, main, lore vignette) with custom 3D","70–100 assets across memes/shorts/stickers/GIFs","Website system + modular scene library","Capsule merch art design (print-ready)"
+      ]
+    },
   };
   const pkg = PACKAGES[recommendation];
-
-  // Estimators
-  const creativeEstimate = useMemo(() => {
-    let base = recommendation === "studio" ? 5000 : recommendation === "mindshare" ? 11000 : 22000;
-    if (content.includes("nftSeed")) base += recommendation === "blacksite" ? 1500 : 1000;
-    if (content.includes("webAssets")) base += 800;
-    if (styles.includes("cinematic")) base += recommendation === "studio" ? 1000 : 500;
-    return base;
-  }, [recommendation, content, styles]);
 
   const merchEstimate = useMemo(() => {
     const items = merchItems.map((id) => MERCH_ITEMS.find((m) => m.id === id) || DEVOPS.find((d) => d.id === id))!.filter(Boolean);
@@ -351,6 +735,77 @@ export default function PSXCreativeEngineMVAP() {
     const designFee = merchDesigns * 200;
     return { baseCost, price, designFee, grossProfit: Math.max(price - baseCost - designFee, 0) };
   }, [merchItems, merchMethod, merchQty, merchMargin, merchDesigns]);
+
+  const packageDetails = useMemo(() => {
+    if (!recommendation) return null;
+  
+    const basePackage = {
+      studio: {
+        name: "Studio Package",
+        basePrice: 2500,
+        description: "Premium first impression + steady social oxygen. Dedicated Producer."
+      },
+      mindshare: {
+        name: "Momentum Package",
+        basePrice: 9000,
+        description: "Ideal for projects scaling quickly, featuring a full creative suite with enhanced production."
+      },
+      blacksite: {
+        name: "Blacksite Launch Package",
+        basePrice: 20000,
+        description: "For VC-backed or institutional launches requiring maximum production value and dedicated resources."
+      }
+    }[recommendation];
+  
+    if (!basePackage) return null;
+  
+    const features = ["Creative Pipeline & Brand Foundation ($1,500)"];
+  
+    // Add content-specific features
+    if (content.includes("launchFilm")) {
+      features.push(
+        recommendation === "blacksite" 
+          ? "3x Cinematic Trailers (3D, schizo edits, TikTok cutdowns)"
+          : "Launch Trailer (60-90 seconds, professional edit)"
+      );
+    }
+  
+    if (content.includes("nftSeed")) {
+      features.push(
+        recommendation === "blacksite"
+          ? "NFT/PFP Collection: Up to 500 assets (custom 2D/3D)"
+          : "NFT/PFP Design: Up to 100 assets"
+      );
+      if (recommendation === "blacksite") {
+        features.push("Metadata and rarity distribution included");
+      }
+    }
+  
+    // Add style-specific features
+    if (styles.includes("cinematic")) {
+      features.push("Cinematic Quality Premium (3D rendering, advanced post-production)");
+    }
+  
+    // Add timeline note
+    const timelineText = timeline === "2-4 weeks" 
+      ? "Rush delivery (2-4 weeks) - Priority scheduling applied"
+      : timeline === "1-2 months" 
+        ? "Standard delivery (1-2 months)"
+        : "Extended timeline (2+ months) - Flexible scheduling";
+    
+    features.push(`Timeline: ${timelineText}`);
+  
+    // Add channel-specific notes
+    if (channels.length > 0) {
+      features.push(`Optimized for: ${channels.map(c => CHANNELS.find(ch => ch.id === c)?.label).filter(Boolean).join(', ')}`);
+    }
+  
+    return {
+      ...basePackage,
+      price: creativeEstimate,
+      features
+    };
+  }, [recommendation, content, styles, timeline, channels, creativeEstimate]);
 
   // Persistence
   useEffect(() => {
@@ -409,29 +864,62 @@ export default function PSXCreativeEngineMVAP() {
 
   // Payload
   async function submitAll() {
-    const payload = buildPayload();
-    console.log("[PSX MVAP] Submission:", payload);
+    if (!validateWorkflowStep2()) return;
     
     try {
       const response = await fetch('/api/submit', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'creative-factory-submission',
+          project: {
+            name: projectName,
+            chain: chain,
+            timeline: timeline,
+            budget: budget,
+            vision: vision
+          },
+          contact: {
+            name: contactName,
+            email: contactEmail,
+            telegram: contactTelegram
+          },
+          selections: {
+            channels: channels,
+            content: content,
+            styles: styles
+          }
+        })
       });
-
+      
       const result = await response.json();
       
-      if (response.ok) {
-        alert('Submission successful! We\'ll be in touch soon.');
+      if (!response.ok) {
+        console.error("Server error:", result.error || 'Unknown error');
+        alert(`❌ Submission failed: ${result.error || 'Please check the console for details'}`);
+        return;
+      }
+      
+      if (result.success) {
+        alert("✅ Submission received! We'll be in touch soon.");
+        // Reset form or navigate to success page
+        setWorkflowStep(1);
+        setProjectName("");
+        setChain("");
+        setTimeline("");
+        setVision("");
+        setChannels([]);
+        setContent([]);
+        setStyles([]);
+        setContactName("");
+        setContactEmail("");
+        setContactTelegram("");
       } else {
-        console.error('Submission failed:', result.error);
-        alert(`Submission failed: ${result.error || 'Unknown error'}`);
+        alert("⚠️ Submission received, but there was an issue processing it.");
       }
     } catch (error) {
-      console.error('Error submitting form:', error);
-      alert('Error submitting form. Please try again.');
+      console.error("Error submitting form:", error);
+      alert(`❌ Failed to submit: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -692,7 +1180,7 @@ This order was submitted through the PSX Creative Engine Bootstrap Store.`;
                 </span>
               </div>
               <div className="mt-3 flex gap-2">
-                <button onClick={handleMerchCheckout} className="rounded-2xl bg-white text-black px-4 py-2 text-sm">Send Cart via Email</button>
+                <button onClick={() => handleMerchCheckout(setView)} className="rounded-2xl bg-white text-black px-4 py-2 text-sm">Send Cart via Email</button>
                 <button onClick={()=>setView("catalog")} className={cx("rounded-2xl px-4 py-2 text-sm border", panel)}>Continue shopping</button>
               </div>
             </>
@@ -822,7 +1310,7 @@ This order was submitted through the PSX Creative Engine Bootstrap Store.`;
       const description = prompt("Enter a short description of your project:");
       if (!description) return alert("Description is required.");
 
-      handleMerchCheckout();
+      handleMerchCheckout(setView);
     }
 
     // simple "3D-ish" mock
@@ -1036,7 +1524,7 @@ This order was submitted through the PSX Creative Engine Bootstrap Store.`;
                 </span>
               </div>
               <div className="mt-3 flex gap-2">
-                <button onClick={handleMerchCheckout} className="rounded-2xl bg-white text-black px-4 py-2 text-sm">Send Cart via Email</button>
+                <button onClick={() => handleMerchCheckout(setView)} className="rounded-2xl bg-white text-black px-4 py-2 text-sm">Send Cart via Email</button>
                 <button onClick={()=>setView("catalog")} className={cx("rounded-2xl px-4 py-2 text-sm border", panel)}>Continue shopping</button>
               </div>
             </>
@@ -1065,7 +1553,16 @@ This order was submitted through the PSX Creative Engine Bootstrap Store.`;
       <header className={cx("sticky top-0 z-20 backdrop-blur border-b", dark ? "bg-zinc-950/70 border-zinc-900" : "bg-white/70 border-zinc-100")}>
         <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={cx("h-7 w-7 rounded-xl", dark ? "bg-blue-500" : "bg-black")}/>
+            <div className={cx("h-7 w-7 rounded-xl overflow-hidden")}>
+              <Image 
+                src="/picture 2.PNG" 
+                alt="PSX Logo"
+                width={28}
+                height={28}
+                className="h-full w-full object-cover"
+                priority
+              />
+            </div>
             <span className="font-semibold tracking-tight">PSX | Creative Factory</span>
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm">
@@ -1103,7 +1600,7 @@ This order was submitted through the PSX Creative Engine Bootstrap Store.`;
                 </div>
                 <div className="relative">
                   <div className={cx("aspect-[4/3] w-full rounded-3xl p-1", dark ? "bg-gradient-to-br from-zinc-800 via-zinc-900 to-black" : "bg-gradient-to-br from-zinc-200 via-zinc-100 to-white")}>
-                    <div className={cx("h-full w-full rounded-2xl flex items-center justify-center", dark ? "bg-zinc-950" : "bg-white")}>
+                    <div className="relative w-full h-full overflow-hidden rounded-2xl">
                       <div className="grid grid-cols-3 gap-3 p-6 w-full">
                         {SAMPLE_VIDEOS.map((video, i) => (
                           <div key={video.id} className="aspect-video rounded-xl overflow-hidden hover:z-10 hover:ring-2 hover:ring-white/50 transition-all duration-300">
@@ -1407,11 +1904,11 @@ This order was submitted through the PSX Creative Engine Bootstrap Store.`;
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <span className="text-sm">${budget.toLocaleString()}</span>
-                          <span className={cx("text-xs", subtext)}>Minimum $5k</span>
+                          <span className={cx("text-xs", subtext)}>Minimum $2.5k</span>
                         </div>
                         <input 
                           type="range" 
-                          min={5000} 
+                          min={2500} 
                           max={30000} 
                           step={500} 
                           value={budget} 
@@ -1419,15 +1916,19 @@ This order was submitted through the PSX Creative Engine Bootstrap Store.`;
                           className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer slider"
                         />
                         <div className="flex gap-2 flex-wrap">
-                          {[5000, 10000, 20000, 30000].map((b) => (
-                            <button 
-                              key={b} 
-                              onClick={() => setBudget(b)} 
-                              className={cx("rounded-full border px-3 py-1 text-sm transition-all", 
-                                budget === b ? (dark ? "border-white bg-white text-black" : "border-black bg-black text-white") : (panel + " hover:opacity-90")
+                          {[2500, 5000, 10000, 20000, 30000].map((b) => (
+                            <button
+                              key={b}
+                              type="button"
+                              onClick={() => setBudget(b)}
+                              className={cx(
+                                "text-xs px-2 py-1 rounded",
+                                budget === b 
+                                  ? "bg-white text-black" 
+                                  : "bg-zinc-800 hover:bg-zinc-700"
                               )}
                             >
-                              ${b.toLocaleString()}
+                              ${b >= 1000 ? `${b/1000}k` : b}
                             </button>
                           ))}
                         </div>
@@ -1656,7 +2157,12 @@ This order was submitted through the PSX Creative Engine Bootstrap Store.`;
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="font-medium">{pkg.name}</span>
-                          <span className="text-lg font-semibold">{pkg.price}</span>
+                          <span className="text-lg font-semibold">
+                            <PriceDisplay 
+                              price={pkg.price} 
+                              breakdown={getPricingBreakdown('launchFilm', [], [], 'ethereum')} 
+                            />
+                          </span>
                         </div>
                         <p className={cx("text-sm", subtext)}>{pkg.blurb}</p>
                         <div className="text-sm">
@@ -1774,7 +2280,35 @@ This order was submitted through the PSX Creative Engine Bootstrap Store.`;
 )}
 
       {/* Merch Engine */}
-      {tab === "merch" && <MerchCustomizerSection />}
+      {tab === "merch" && (
+        <div className="max-w-6xl mx-auto py-6 px-4">
+          <ClothingLineDesigner 
+            onSubmit={async (data) => {
+              try {
+                const response = await fetch('/api/submit', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    type: 'merch-store-order',
+                    collection: data
+                  })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                  alert('✅ Collection submitted successfully!');
+                } else {
+                  throw new Error(result.error || 'Failed to submit collection');
+                }
+              } catch (error) {
+                console.error('Error submitting collection:', error);
+                alert(`❌ Failed to submit collection: ${error instanceof Error ? error.message : 'Unknown error'}`);
+              }
+            }} 
+          />
+        </div>
+      )}
 
       {/* Footer */}
       <footer className={cx("border-t", dark ? "border-zinc-800 bg-zinc-900/50" : "border-zinc-200 bg-white")}>
@@ -1790,7 +2324,7 @@ This order was submitted through the PSX Creative Engine Bootstrap Store.`;
             </a>
             <a href="https://discord.gg/psxonbase" target="_blank" rel="noopener noreferrer" aria-label="Discord" className={cx("hover:opacity-75", subtext)}>
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.453.864-.62 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.1 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.1c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.84 19.84 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.158-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.158 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.955 2.418-2.157 2.418z" />
+                <path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.453.864-.62 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.1 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.1c.36.698.772 1.362 1.225 1.993.078.078 0 00.084-.028 19.84 19.84 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.158-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.158 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418z" />
               </svg>
             </a>
           </div>
