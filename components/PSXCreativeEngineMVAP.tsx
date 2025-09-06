@@ -1543,36 +1543,99 @@ This order was submitted through the PSX Creative Engine Bootstrap Store.`;
   const panel = dark ? "border-zinc-800" : "border-zinc-200";
   const subtext = dark ? "text-zinc-400" : "text-zinc-600";
 
-  // ---------------------------------------------
-  // BIG RETURN
-  // ---------------------------------------------
+  // Add this state near the top of your component
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Toggle function for mobile menu
+  const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
+  const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
     <div className={cx("min-h-screen", bg, fg)}>
       {/* Header */}
-      <header className={cx("sticky top-0 z-20 backdrop-blur border-b", dark ? "bg-zinc-950/70 border-zinc-900" : "bg-white/70 border-zinc-100")}>
-        <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={cx("h-7 w-7 rounded-xl overflow-hidden")}>
-              <Image 
-                src="/picture 2.PNG" 
-                alt="PSX Logo"
-                width={28}
-                height={28}
-                className="h-full w-full object-cover"
-                priority
-              />
-            </div>
+      <header className={cx("sticky top-0 z-40 w-full border-b", panel)}>
+        <div className="container flex h-16 items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            <Image 
+              src="/picture 2.PNG" 
+              alt="PSX Logo"
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-xl object-cover"
+              priority
+            />
             <span className="font-semibold tracking-tight">PSX | Creative Factory</span>
           </div>
+          
+          {/* Mobile menu button */}
+          <button 
+            className="md:hidden p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            onClick={toggleMobileMenu}
+            aria-expanded={mobileMenuOpen}
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? (
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+
+          {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6 text-sm">
-            <button onClick={() => setTab("home")} className={cx(tab === "home" && "font-medium underline underline-offset-4")}>Home</button>
-            <button onClick={() => setTab("config")} className={cx(tab === "config" && "font-medium underline underline-offset-4")}>Creative Factory</button>
-            <button onClick={() => setTab("devops")} className={cx(tab === "devops" && "font-medium underline underline-offset-4")}>Bootstrap</button>
-            <button onClick={() => setTab("merch")} className={cx(tab === "merch" && "font-medium underline underline-offset-4")}>Merch Engine</button>
+            <button onClick={() => { setTab("home"); closeMobileMenu(); }} className={cx(tab === "home" && "font-medium underline underline-offset-4")}>Home</button>
+            <button onClick={() => { setTab("config"); closeMobileMenu(); }} className={cx(tab === "config" && "font-medium underline underline-offset-4")}>Creative Factory</button>
+            <button onClick={() => { setTab("devops"); closeMobileMenu(); }} className={cx(tab === "devops" && "font-medium underline underline-offset-4")}>Bootstrap</button>
+            <button onClick={() => { setTab("merch"); closeMobileMenu(); }} className={cx(tab === "merch" && "font-medium underline underline-offset-4")}>Merch Engine</button>
           </nav>
-          <div className="flex items-center gap-3">
-            <button onClick={() => setDark((d) => !d)} className={cx("rounded-full px-3 py-1 text-xs border", panel)}>{dark ? "Light" : "Blacksite"}</button>
+
+          <div className="hidden md:flex items-center gap-3">
+            <button onClick={() => setDark((d) => !d)} className={cx("rounded-full px-3 py-1 text-xs border", panel)}>
+              {dark ? "Light" : "Blacksite"}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Navigation */}
+        <div className={`md:hidden ${mobileMenuOpen ? 'block' : 'hidden'} border-t ${dark ? 'border-zinc-800' : 'border-zinc-200'}`}>
+          <button 
+            onClick={() => { setTab("home"); closeMobileMenu(); }}
+            className={`block w-full px-4 py-3 text-left ${tab === "home" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
+          >
+            Home
+          </button>
+          <button 
+            onClick={() => { setTab("config"); closeMobileMenu(); }}
+            className={`block w-full px-4 py-3 text-left ${tab === "config" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
+          >
+            Creative Factory
+          </button>
+          <button 
+            onClick={() => { setTab("devops"); closeMobileMenu(); }}
+            className={`block w-full px-4 py-3 text-left ${tab === "devops" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
+          >
+            Bootstrap
+          </button>
+          <button 
+            onClick={() => { setTab("merch"); closeMobileMenu(); }}
+            className={`block w-full px-4 py-3 text-left ${tab === "merch" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
+          >
+            Merch Engine
+          </button>
+          <div className="px-4 py-3 border-t border-zinc-200 dark:border-zinc-800">
+            <button 
+              onClick={() => { 
+                setDark(d => !d);
+                closeMobileMenu();
+              }}
+              className="w-full text-left"
+            >
+              {dark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            </button>
           </div>
         </div>
       </header>
