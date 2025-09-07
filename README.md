@@ -7,7 +7,7 @@ A **minimum viable awesome product** for PSX B2B:
 - **Bootstrap** a‑la‑carte ops store
 - **Merch Shop** (catalog, sizes, cart, margin preview, checkout stub)
 - **Dashboard / Client Portal** (milestones, kanban tasks, content library, approvals, invoices, team & access, accounts, support chat)
-- **Integrations** (Airtable + Email webhook + Stripe key — guarded stubs)
+- **Integrations** (Airtable + Email webhook +)
 - LocalStorage persistence & theme toggle
 
 ## Quick Start
