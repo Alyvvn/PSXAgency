@@ -1,5 +1,5 @@
 
-# PSX Creative Engine — MVAP Next.js Demo
+# PSX Creative Engine — MVAP Next.js LIVE SITE IN DESC
 
 A **minimum viable awesome product** for PSX B2B:
 - About + Services + Selected Work
